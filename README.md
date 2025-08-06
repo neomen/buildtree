@@ -26,7 +26,7 @@ custom_login/
 
 ## Installation
 ```bash
-go install github.com/neomen/buildtree@latest
+go install github.com/neomen/buildtree/cmd/buildtree@latest
 ```
 
 ## Usage
