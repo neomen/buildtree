@@ -10,6 +10,12 @@ import (
 	"unicode/utf8"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	// Define command-line flags
 	filePath := flag.String("f", "", "Path to file containing directory structure")
@@ -61,6 +67,7 @@ func printHelp() {
 	fmt.Println("  │   ├── file1.txt")
 	fmt.Println("  │   └── subdir/")
 	fmt.Println("  └── file2.txt")
+	fmt.Printf("BuildTree v%s\n", version)
 }
 
 func processInput(input string) {
