@@ -23,12 +23,12 @@ builds:
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 archives:
-  - replacements:
-      darwin: macOS
-      linux: Linux
-      windows: Windows
-      amd64: x86_64
-      arm64: ARM64
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{ .Version }}_
+      {{ if eq .Os "darwin" }}macOS{{ else }}{{ title .Os }}{{ end }}_
+      {{ if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
         format: zip
