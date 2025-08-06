@@ -47,14 +47,14 @@ func main() {
 }
 
 func printHelp() {
-	fmt.Println("QuickTree - Instant Directory Tree Builder")
-	fmt.Println("Usage: quicktree [OPTIONS] \"DIRECTORY_STRUCTURE\"")
+	fmt.Println("Buildtree - Instant Directory Tree Builder")
+	fmt.Println("Usage: buildtree [OPTIONS] \"DIRECTORY_STRUCTURE\"")
 	fmt.Println("Options:")
 	fmt.Println("  -f FILE    Read structure from file")
 	fmt.Println("  -h, --help Show this help message")
 	fmt.Println("\nExamples:")
-	fmt.Println("  quicktree \"project/\n├── src/\n│   └── main.go\"")
-	fmt.Println("  quicktree -f structure.txt")
+	fmt.Println("  buildtree \"project/\n├── src/\n│   └── main.go\"")
+	fmt.Println("  buildtree -f structure.txt")
 	fmt.Println("\nStructure format:")
 	fmt.Println("  myproject/")
 	fmt.Println("  ├── dir1/")
