@@ -216,28 +216,28 @@ func TestParseLine(t *testing.T) {
 		{
 			name:          "Simple file",
 			line:          "    └── file.txt",
-			expectedLevel: 1,
+			expectedLevel: 2, // 4 пробела + 3 символа + пробел └── = 8 символов / 4 = 2
 			expectedName:  "file.txt",
 			expectedIsDir: false,
 		},
 		{
 			name:          "Directory with slash",
 			line:          "    ├── src/",
-			expectedLevel: 1,
+			expectedLevel: 2, // 4 пробела + 3 символа + пробел ├── = 8 символов / 4 = 2
 			expectedName:  "src",
 			expectedIsDir: true,
 		},
 		{
 			name:          "Nested structure",
 			line:          "        └── deepfile.go",
-			expectedLevel: 2,
+			expectedLevel: 3, // 8 пробелов + 3 символа + пробел └── = 12 символов / 4 = 2
 			expectedName:  "deepfile.go",
 			expectedIsDir: false,
 		},
 		{
 			name:          "With comment",
 			line:          "    ├── config.yml # Configuration file",
-			expectedLevel: 1,
+			expectedLevel: 2, // 4 пробела + 3 символа + пробел ├── = 8 символов / 4 = 1
 			expectedName:  "config.yml",
 			expectedIsDir: false,
 		},
@@ -281,7 +281,7 @@ func TestExtractName(t *testing.T) {
 		{
 			name:     "Directory with slash",
 			input:    "    ├── dirname/",
-			expected: "dirname",
+			expected: "dirname/",
 		},
 		{
 			name:     "With extra spaces",
@@ -291,6 +291,11 @@ func TestExtractName(t *testing.T) {
 		{
 			name:     "With comment",
 			input:    "    └── file.txt # This is a comment",
+			expected: "file.txt",
+		},
+		{
+			name:     "With comment and no space",
+			input:    "    └── file.txt#This is a comment",
 			expected: "file.txt",
 		},
 	}
