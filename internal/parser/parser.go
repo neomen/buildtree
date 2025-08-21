@@ -38,9 +38,7 @@ func ParseInput(input string) (*Node, error) {
 	if idx := strings.Index(rootLine, "#"); idx != -1 {
 		rootLine = strings.TrimSpace(rootLine[:idx])
 	}
-	if strings.HasSuffix(rootLine, "/") {
-		rootLine = rootLine[:len(rootLine)-1]
-	}
+	rootLine = strings.TrimSuffix(rootLine, "/")
 
 	root := &Node{
 		Name:  rootLine,
