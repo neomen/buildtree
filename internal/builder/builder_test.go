@@ -8,7 +8,17 @@ import (
 )
 
 func TestBuildTree_SimpleStructure(t *testing.T) {
-	// tempDir := t.TempDir()
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir) // Восстанавливаем оригинальную директорию
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	root := &parser.Node{
 		Name:  "project",
@@ -35,7 +45,7 @@ func TestBuildTree_SimpleStructure(t *testing.T) {
 		},
 	}
 
-	err := BuildTree(root, 0)
+	err = BuildTree(root, 0)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -49,7 +59,16 @@ func TestBuildTree_SimpleStructure(t *testing.T) {
 
 func TestBuildTree_ComplexStructure(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	root := &parser.Node{
 		Name:  "app",
@@ -117,7 +136,7 @@ func TestBuildTree_ComplexStructure(t *testing.T) {
 		},
 	}
 
-	err := BuildTree(root, 0)
+	err = BuildTree(root, 0)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -138,7 +157,16 @@ func TestBuildTree_ComplexStructure(t *testing.T) {
 
 func TestBuildTree_MaxDepth(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	root := &parser.Node{
 		Name:  "project",
@@ -175,7 +203,7 @@ func TestBuildTree_MaxDepth(t *testing.T) {
 	}
 
 	// Test with maxDepth = 2 (should only create up to level2)
-	err := BuildTree(root, 2)
+	err = BuildTree(root, 2)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -192,10 +220,19 @@ func TestBuildTree_MaxDepth(t *testing.T) {
 
 func TestBuildTree_ExistingDirectories(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Create the root directory manually first
-	err := os.Mkdir("project", 0755)
+	err = os.Mkdir("project", 0755)
 	if err != nil {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
@@ -233,7 +270,16 @@ func TestBuildTree_ExistingDirectories(t *testing.T) {
 
 func TestBuildTree_InvalidNames(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	root := &parser.Node{
 		Name:  "project",
@@ -263,7 +309,7 @@ func TestBuildTree_InvalidNames(t *testing.T) {
 		},
 	}
 
-	err := BuildTree(root, 0)
+	err = BuildTree(root, 0)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -278,7 +324,16 @@ func TestBuildTree_InvalidNames(t *testing.T) {
 
 func TestBuildTree_DotDotPath(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	root := &parser.Node{
 		Name:  "project",
@@ -298,7 +353,7 @@ func TestBuildTree_DotDotPath(t *testing.T) {
 		},
 	}
 
-	err := BuildTree(root, 0)
+	err = BuildTree(root, 0)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -330,7 +385,16 @@ func TestBuildTree_DotDotPath(t *testing.T) {
 
 func TestBuildTree_WindowsReservedNames(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	root := &parser.Node{
 		Name:  "project",
@@ -360,7 +424,7 @@ func TestBuildTree_WindowsReservedNames(t *testing.T) {
 		},
 	}
 
-	err := BuildTree(root, 0)
+	err = BuildTree(root, 0)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -376,7 +440,16 @@ func TestBuildTree_WindowsReservedNames(t *testing.T) {
 
 func TestBuildTree_EmptyNode(t *testing.T) {
 	tempDir := t.TempDir()
-	os.Chdir(tempDir)
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Test with an empty node (should return error)
 	root := &parser.Node{
@@ -385,7 +458,7 @@ func TestBuildTree_EmptyNode(t *testing.T) {
 		Level: 0,
 	}
 
-	err := BuildTree(root, 0)
+	err = BuildTree(root, 0)
 	if err == nil {
 		t.Error("Expected error for empty node name, but got none")
 	}
