@@ -304,10 +304,28 @@ func TestBuildTree_DotDotPath(t *testing.T) {
 	}
 
 	// Check that the malicious path was not created
-	assertNotExists(t, "project/..")
+	// We need to check the actual contents of the project directory
+	entries, err := os.ReadDir("project")
+	if err != nil {
+		t.Fatalf("Error reading project directory: %v", err)
+	}
 
-	// Check that the normal directory was created
-	assertDirExists(t, "project/normal_dir")
+	// Count non-hidden entries (excluding . and ..)
+	var visibleEntries []string
+	for _, entry := range entries {
+		if entry.Name() != "." && entry.Name() != ".." {
+			visibleEntries = append(visibleEntries, entry.Name())
+		}
+	}
+
+	// Should only have one visible entry: normal_dir
+	if len(visibleEntries) != 1 {
+		t.Errorf("Expected 1 visible entry, got %d: %v", len(visibleEntries), visibleEntries)
+	}
+
+	if len(visibleEntries) > 0 && visibleEntries[0] != "normal_dir" {
+		t.Errorf("Expected 'normal_dir', got '%s'", visibleEntries[0])
+	}
 }
 
 func TestBuildTree_WindowsReservedNames(t *testing.T) {
@@ -360,7 +378,7 @@ func TestBuildTree_EmptyNode(t *testing.T) {
 	tempDir := t.TempDir()
 	os.Chdir(tempDir)
 
-	// Test with an empty node (should not crash)
+	// Test with an empty node (should return error)
 	root := &parser.Node{
 		Name:  "",
 		IsDir: true,

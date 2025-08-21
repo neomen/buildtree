@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -14,6 +15,11 @@ func BuildTree(root *parser.Node, maxDepth int) error {
 	if maxDepth < 0 {
 		maxDepth = 0
 		log.Println("Warning: Negative max-depth value corrected to 0 (no limit)")
+	}
+
+	// Validate root node name
+	if !validator.IsValidPath(root.Name) {
+		return fmt.Errorf("invalid root node name: '%s'", root.Name)
 	}
 
 	// Create root directory

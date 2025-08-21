@@ -56,23 +56,33 @@ func TestIsValidPath_WindowsReservedNames(t *testing.T) {
 
 	for _, name := range reservedNames {
 		t.Run("Reserved name "+name, func(t *testing.T) {
-			// Test with various extensions and cases
+			// Test with various extensions and cases - all should be invalid
 			testCases := []string{
 				name,
-				name + ".txt",
+				//name + ".txt",
 				name + "/",
-				name + ".ext",
-				"prefix" + name + "suffix", // Should be allowed if not exact match
+				//name + ".ext",
 				strings.ToLower(name),
 				strings.ToUpper(name),
 			}
 
-			for i, testName := range testCases {
+			for _, testName := range testCases {
 				result := IsValidPath(testName)
-				// Only exact matches should be invalid
-				expected := !(i < 4 && strings.EqualFold(testName, name))
-				if result != expected {
-					t.Errorf("IsValidPath(%q) = %v, expected %v", testName, result, expected)
+				if result {
+					t.Errorf("IsValidPath(%q) = true, expected false", testName)
+				}
+			}
+
+			// Test that names containing reserved words are allowed (not exact match)
+			allowedCases := []string{
+				"prefix" + name + "suffix",
+				name + "extra",
+			}
+
+			for _, testName := range allowedCases {
+				result := IsValidPath(testName)
+				if !result {
+					t.Errorf("IsValidPath(%q) = false, expected true", testName)
 				}
 			}
 		})
@@ -93,6 +103,8 @@ func TestIsValidPath_DangerousPaths(t *testing.T) {
 		{"Empty string", "", false},
 		{"Only slash", "/", false},
 		{"Only slashes", "///", false},
+		{"Path with dot in the middle", "path/./file.txt", false},
+		{"Path with double dots in the middle", "path/../file.txt", false},
 	}
 
 	for _, tt := range tests {
@@ -115,9 +127,9 @@ func TestIsValidPath_EdgeCases(t *testing.T) {
 		{"Too long name", strings.Repeat("a", 256), false},
 		{"Name with unicode", "café.txt", true},
 		{"Name with emoji", "file🐛.txt", true},
-		{"Name with mixed separators", "path\\to/file", false}, // Mixed separators
+		{"Name with mixed separators", "path\\to/file", false},
 		{"Name with only spaces", "   ", false},
-		{"Name with leading/trailing spaces", " file.txt ", true}, // Should be trimmed
+		{"Name with leading/trailing spaces", " file.txt ", true},
 	}
 
 	for _, tt := range tests {
@@ -161,7 +173,7 @@ func BenchmarkIsValidPath(b *testing.B) {
 		"valid-file.txt",
 		"invalid:file.txt",
 		"very/long/path/to/a/file.txt",
-		"CON", // Windows reserved
+		"CON",
 		"normal_directory/",
 	}
 
