@@ -1,27 +1,36 @@
-# .goreleaser.yml
+project_name: buildtree
 before:
   hooks:
     - go mod tidy
 builds:
-  - id: buildtree
-    main: ./cmd/buildtree
-    binary: buildtree
+  - env:
+      - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
       - windows
+      - darwin
     goarch:
       - amd64
       - arm64
-    env:
-      - CGO_ENABLED=0
-archive:
-  replacements:
-    darwin: macOS
-    linux: Linux
-    windows: Windows
-    amd64: x86_64
-    arm64: ARM64
-  format_overrides:
-    - goos: windows
-      format: zip
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    main: ./cmd/buildtree
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+snapshot:
+  name_template: "{{ .ProjectName }}-SNAPSHOT-{{ .ShortCommit }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
