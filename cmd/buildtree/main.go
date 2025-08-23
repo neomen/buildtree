@@ -3,164 +3,132 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"io"
 	"os"
-	"path/filepath"
-	"strings"
-	"unicode/utf8"
+
+	"github.com/neomen/buildtree/internal/builder"
+	"github.com/neomen/buildtree/internal/parser"
 )
 
 var (
-	version = "dev"
+	version = "-dev"
 	commit  = "none"
 	date    = "unknown"
 )
 
-func main() {
-	// Define command-line flags
-	filePath := flag.String("f", "", "Path to file containing directory structure")
-	helpFlag := flag.Bool("h", false, "Show help")
-	helpFlagLong := flag.Bool("help", false, "Show help")
-	flag.Parse()
+// Добавим интерфейсы для зависимостей, чтобы можно было мокировать их в тестах
+type parserInterface interface {
+	ParseInput(input string) (*parser.Node, error)
+}
 
-	// Show help if requested
-	if *helpFlag || *helpFlagLong {
-		printHelp()
-		return
+type builderInterface interface {
+	BuildTree(root *parser.Node, maxDepth int) error
+}
+
+// Реальные реализации
+type realParser struct{}
+type realBuilder struct{}
+
+func (r *realParser) ParseInput(input string) (*parser.Node, error) {
+	return parser.ParseInput(input)
+}
+
+func (r *realBuilder) BuildTree(root *parser.Node, maxDepth int) error {
+	return builder.BuildTree(root, maxDepth)
+}
+
+// Вынесем основную логику в отдельную функцию для тестирования
+func run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, p parserInterface, b builderInterface) int {
+	// Создаем новый набор флагов для каждого вызова
+	flags := flag.NewFlagSet("buildtree", flag.ContinueOnError)
+	flags.SetOutput(stderr) // Устанавливаем вывод ошибок флагов в stderr
+
+	filePath := flags.String("input-file", "", "Path to file containing directory structure")
+	helpFlag := flags.Bool("help", false, "Show help")
+	maxDepth := flags.Int("max-depth", 20, "Maximum nesting depth allowed (0 = no limit)")
+	versionFlag := flags.Bool("version", false, "Show version information")
+	flags.StringVar(filePath, "i", "", "Alias for --input-file")
+	flags.IntVar(maxDepth, "d", 20, "Alias for --max-depth")
+	flags.BoolVar(versionFlag, "v", false, "Alias for --version")
+	flags.BoolVar(helpFlag, "h", false, "Alias for --help")
+
+	// Парсим аргументы
+	if err := flags.Parse(args); err != nil {
+		return 1
 	}
 
-	// Get input structure
-	var input string
-	if *filePath != "" {
-		// Read from file
-		content, err := os.ReadFile(*filePath)
+	if *helpFlag {
+		printHelp(stdout)
+		return 0
+	}
+
+	if *versionFlag {
+		fmt.Fprintf(stdout, "buildtree v%s\nCommit: %s\nBuilt: %s\n", version, commit, date)
+		return 0
+	}
+
+	input := getInput(*filePath, stdin, flags, stderr)
+	if input == "" {
+		return 1
+	}
+
+	// Parse the input structure
+	root, err := p.ParseInput(input)
+	if err != nil {
+		fmt.Fprintf(stderr, "Error parsing input: %v\n", err)
+		return 1
+	}
+
+	// Build the file structure
+	if err := b.BuildTree(root, *maxDepth); err != nil {
+		fmt.Fprintf(stderr, "Error building tree: %v\n", err)
+		return 1
+	}
+
+	return 0
+}
+
+func getInput(filePath string, stdin io.Reader, flags *flag.FlagSet, stderr io.Writer) string {
+	if filePath != "" {
+		content, err := os.ReadFile(filePath)
 		if err != nil {
-			log.Fatalf("Error reading file: %v", err)
+			fmt.Fprintf(stderr, "Error reading file: %v\n", err)
+			return ""
 		}
-		input = string(content)
-	} else {
-		// Get from command-line arguments
-		args := flag.Args()
-		if len(args) < 1 {
-			printHelp()
-			log.Fatal("Error: No input structure provided")
-		}
-		input = args[0]
+		return string(content)
 	}
 
-	// Process the input
-	processInput(input)
+	args := flags.Args()
+	if len(args) < 1 {
+		printHelp(stderr)
+		fmt.Fprintln(stderr, "Error: No input structure provided")
+		return ""
+	}
+	return args[0]
 }
 
-func printHelp() {
-	fmt.Println("Buildtree - Instant Directory Tree Builder")
-	fmt.Println("Usage: buildtree [OPTIONS] \"DIRECTORY_STRUCTURE\"")
-	fmt.Println("Options:")
-	fmt.Println("  -f FILE    Read structure from file")
-	fmt.Println("  -h, --help Show this help message")
-	fmt.Println("\nExamples:")
-	fmt.Println("  buildtree \"project/\n├── src/\n│   └── main.go\"")
-	fmt.Println("  buildtree -f structure.txt")
-	fmt.Println("\nStructure format:")
-	fmt.Println("  myproject/")
-	fmt.Println("  ├── dir1/")
-	fmt.Println("  │   ├── file1.txt")
-	fmt.Println("  │   └── subdir/")
-	fmt.Println("  └── file2.txt")
-	fmt.Printf("BuildTree v%s\n", version)
+func printHelp(w io.Writer) {
+	fmt.Fprintln(w, "Buildtree - Instant Directory Tree Builder")
+	fmt.Fprintln(w, "Usage: buildtree [OPTIONS] \"DIRECTORY_STRUCTURE\"")
+	fmt.Fprintln(w, "Options:")
+	fmt.Fprintln(w, "  -i, --input-file FILE	Read structure from file")
+	fmt.Fprintln(w, "  -d, --max-depth N	Maximum nesting depth allowed (0=unlimited, default:20)")
+	fmt.Fprintln(w, "  -h, --help		Show this help message")
+	fmt.Fprintln(w, "  -v, --version		Show version information")
+	fmt.Fprintln(w, "\nExamples:")
+	fmt.Fprintln(w, "  buildtree \"project/\n├── src/\n│   └── main.go\"")
+	fmt.Fprintln(w, "  buildtree --input-file structure.txt")
+	fmt.Fprintln(w, "\nStructure format:")
+	fmt.Fprintln(w, "  myproject/")
+	fmt.Fprintln(w, "  ├── dir1/")
+	fmt.Fprintln(w, "  │   ├── file1.txt")
+	fmt.Fprintln(w, "  │   └── subdir/")
+	fmt.Fprintln(w, "  └── file2.txt")
 }
 
-func processInput(input string) {
-	lines := strings.Split(input, "\n")
-	if len(lines) == 0 {
-		log.Fatal("Input is empty")
-	}
-
-	// Process root directory
-	rootDir := strings.TrimSpace(lines[0])
-	// Remove comments from root directory
-	if idx := strings.Index(rootDir, "#"); idx != -1 {
-		rootDir = strings.TrimSpace(rootDir[:idx])
-	}
-	if strings.HasSuffix(rootDir, "/") {
-		rootDir = rootDir[:len(rootDir)-1]
-	}
-
-	// Create root directory
-	if err := os.Mkdir(rootDir, 0755); err != nil && !os.IsExist(err) {
-		log.Fatal("Error creating root directory:", err)
-	}
-
-	// Stack to track parent directories for each level
-	stack := []string{rootDir}
-
-	for i, line := range lines[1:] {
-		// Remove comments (everything after #)
-		if idx := strings.Index(line, "#"); idx != -1 {
-			line = line[:idx]
-		}
-
-		line = strings.TrimRight(line, " ")
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-
-		// Calculate indentation level
-		depth := 0
-		remaining := line
-		for len(remaining) > 0 {
-			r, size := utf8.DecodeRuneInString(remaining)
-			if r == ' ' || r == '│' || r == '├' || r == '└' || r == '─' {
-				depth++
-				remaining = remaining[size:]
-			} else {
-				break
-			}
-		}
-
-		// Calculate nesting level (4 characters = 1 level)
-		level := depth / 4
-
-		// Extract element name
-		name := strings.TrimSpace(remaining)
-		name = strings.TrimPrefix(name, "── ")
-		name = strings.TrimSpace(name)
-
-		if name == "" {
-			continue
-		}
-
-		// Validate level
-		if level > len(stack) {
-			log.Fatalf("Line %d: invalid nesting level %d (max %d)", i+2, level, len(stack))
-		}
-
-		// Determine parent directory
-		parent := rootDir
-		if level > 0 {
-			parent = stack[level-1]
-		}
-
-		if strings.HasSuffix(name, "/") {
-			// Create directory
-			dirName := strings.TrimSuffix(name, "/")
-			dirPath := filepath.Join(parent, dirName)
-			if err := os.Mkdir(dirPath, 0755); err != nil && !os.IsExist(err) {
-				log.Fatal("Error creating directory:", err)
-			}
-
-			// Update stack for this level
-			if level < len(stack) {
-				stack[level] = dirPath
-			} else {
-				stack = append(stack, dirPath)
-			}
-		} else {
-			// Create file
-			filePath := filepath.Join(parent, name)
-			if err := os.WriteFile(filePath, []byte{}, 0644); err != nil {
-				log.Fatal("Error creating file:", err)
-			}
-		}
-	}
+func main() {
+	p := &realParser{}
+	b := &realBuilder{}
+	exitCode := run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, p, b)
+	os.Exit(exitCode)
 }

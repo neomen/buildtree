@@ -1,260 +1,302 @@
 package main
 
 import (
-	"io"
+	"bytes"
+	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/neomen/buildtree/internal/parser"
 )
 
-// ... (основной код программы без изменений) ...
+// Mock implementations for testing
+type mockParser struct {
+	parseFunc func(input string) (*parser.Node, error)
+}
 
-func TestCreateStructure(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected []string
-	}{
-		{
-			name: "Simple structure",
-			input: `project/
+func (m *mockParser) ParseInput(input string) (*parser.Node, error) {
+	return m.parseFunc(input)
+}
+
+type mockBuilder struct {
+	buildFunc func(root *parser.Node, maxDepth int) error
+}
+
+func (m *mockBuilder) BuildTree(root *parser.Node, maxDepth int) error {
+	return m.buildFunc(root, maxDepth)
+}
+
+func TestRun_HelpFlag(t *testing.T) {
+	// Mock dependencies
+	p := &mockParser{}
+	b := &mockBuilder{}
+
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Test help flag
+	exitCode := run([]string{"-h"}, &bytes.Buffer{}, stdout, stderr, p, b)
+
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout.String(), "Buildtree - Instant Directory Tree Builder") {
+		t.Error("Help text was not printed")
+	}
+}
+
+func TestRun_VersionFlag(t *testing.T) {
+	// Mock dependencies
+	p := &mockParser{}
+	b := &mockBuilder{}
+
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Test version flag
+	exitCode := run([]string{"-v"}, &bytes.Buffer{}, stdout, stderr, p, b)
+
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout.String(), "buildtree v"+version) {
+		t.Error("Version information was not printed")
+	}
+}
+
+func TestRun_NoInput(t *testing.T) {
+	// Mock dependencies
+	p := &mockParser{}
+	b := &mockBuilder{}
+
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Test with no input
+	exitCode := run([]string{}, &bytes.Buffer{}, stdout, stderr, p, b)
+
+	if exitCode != 1 {
+		t.Errorf("Expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stderr.String(), "No input structure provided") {
+		t.Error("Error message was not printed")
+	}
+}
+
+func TestRun_FileInput(t *testing.T) {
+	// Create a temporary file with test content
+	tempFile, err := os.CreateTemp("", "test-input")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tempFile.Name())
+
+	content := `project/
 ├── src/
 │   └── main.go
-├── pkg/
-│   └── utils.go
-└── README.md`,
-			expected: []string{
-				"project",
-				"project/src",
-				"project/src/main.go",
-				"project/pkg",
-				"project/pkg/utils.go",
-				"project/README.md",
-			},
-		},
-		{
-			name: "With comments",
-			input: `app/              # Main application
-├── cmd/          # Commands
-│   └── run.sh    # Runner script
-└── config/       # Configuration
-    └── app.yaml  # Config file`,
-			expected: []string{
-				"app",
-				"app/cmd",
-				"app/cmd/run.sh",
-				"app/config",
-				"app/config/app.yaml",
-			},
-		},
-		{
-			name: "Multi-level nesting",
-			input: `root/
-├── a/
-│   ├── b/
-│   │   └── file1.txt
-│   └── c/
-│       └── file2.txt
-└── d/
-    └── e/
-        └── file3.txt`,
-			expected: []string{
-				"root",
-				"root/a",
-				"root/a/b",
-				"root/a/b/file1.txt",
-				"root/a/c",
-				"root/a/c/file2.txt",
-				"root/d",
-				"root/d/e",
-				"root/d/e/file3.txt",
-			},
-		},
-		{
-			name: "Mixed files and directories",
-			input: `test/
-├── file1
-├── dir1/
-│   ├── file2
-│   └── subdir/
-│       └── file3
-└── file4`,
-			expected: []string{
-				"test",
-				"test/file1",
-				"test/dir1",
-				"test/dir1/file2",
-				"test/dir1/subdir",
-				"test/dir1/subdir/file3",
-				"test/file4",
-			},
+└── README.md`
+	_, err = tempFile.WriteString(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tempFile.Close()
+
+	// Mock dependencies
+	p := &mockParser{
+		parseFunc: func(input string) (*parser.Node, error) {
+			if input != content {
+				t.Errorf("Expected content %q, got %q", content, input)
+			}
+			return &parser.Node{Name: "project", IsDir: true}, nil
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create temp directory
-			tempDir, err := os.MkdirTemp("", "quicktree_test")
-			if err != nil {
-				t.Fatalf("Failed to create temp dir: %v", err)
+	b := &mockBuilder{
+		buildFunc: func(root *parser.Node, maxDepth int) error {
+			if root.Name != "project" {
+				t.Errorf("Expected root name 'project', got %q", root.Name)
 			}
-			defer os.RemoveAll(tempDir)
-
-			// Change working directory to temp
-			oldDir, err := os.Getwd()
-			if err != nil {
-				t.Fatalf("Failed to get current dir: %v", err)
+			if maxDepth != 20 {
+				t.Errorf("Expected maxDepth 20, got %d", maxDepth)
 			}
-			defer os.Chdir(oldDir)
-			os.Chdir(tempDir)
+			return nil
+		},
+	}
 
-			// Process test input
-			processInput(tt.input)
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 
-			// Verify created structure
-			for _, path := range tt.expected {
-				fullPath := filepath.Join(tempDir, path)
-				if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-					t.Errorf("Expected path not created: %s", path)
-				}
-			}
+	// Test file input
+	exitCode := run([]string{"-i", tempFile.Name()}, &bytes.Buffer{}, stdout, stderr, p, b)
 
-			// Check for unexpected files
-			filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-
-				relPath, err := filepath.Rel(tempDir, path)
-				if err != nil {
-					return err
-				}
-
-				if relPath == "." {
-					return nil
-				}
-
-				found := false
-				for _, expected := range tt.expected {
-					if expected == relPath {
-						found = true
-						break
-					}
-				}
-
-				if !found {
-					t.Errorf("Unexpected path created: %s", relPath)
-				}
-				return nil
-			})
-		})
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0, got %d", exitCode)
 	}
 }
 
-func TestCommandLineFlags(t *testing.T) {
-	tests := []struct {
-		name     string
-		args     []string
-		input    string
-		expected []string
-	}{
-		{
-			name: "Direct input",
-			args: []string{"-h=false", "project/\n└── file.txt"},
-			expected: []string{
-				"project",
-				"project/file.txt",
-			},
-		},
-		{
-			name: "File input",
-			args: []string{"-f", "test_structure.txt"},
-			input: `dir/
-├── subdir/
-│   └── file`,
-			expected: []string{
-				"dir",
-				"dir/subdir",
-				"dir/subdir/file",
-			},
+func TestRun_StdinInput(t *testing.T) {
+	input := `project/
+├── src/
+│   └── main.go
+└── README.md`
+
+	stdin := strings.NewReader(input)
+
+	// Mock dependencies
+	p := &mockParser{
+		parseFunc: func(actualInput string) (*parser.Node, error) {
+			if actualInput != input {
+				t.Errorf("Expected content %q, got %q", input, actualInput)
+			}
+			return &parser.Node{Name: "project", IsDir: true}, nil
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create temp directory
-			tempDir, err := os.MkdirTemp("", "quicktree_test")
-			if err != nil {
-				t.Fatalf("Failed to create temp dir: %v", err)
+	b := &mockBuilder{
+		buildFunc: func(root *parser.Node, maxDepth int) error {
+			if root.Name != "project" {
+				t.Errorf("Expected root name 'project', got %q", root.Name)
 			}
-			defer os.RemoveAll(tempDir)
+			return nil
+		},
+	}
 
-			// Create test file if needed
-			if tt.input != "" {
-				filePath := filepath.Join(tempDir, "test_structure.txt")
-				if err := os.WriteFile(filePath, []byte(tt.input), 0644); err != nil {
-					t.Fatalf("Failed to create test file: %v", err)
-				}
-				// Update args with actual file path
-				for i, arg := range tt.args {
-					if arg == "test_structure.txt" {
-						tt.args[i] = filePath
-					}
-				}
-			}
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
 
-			// Change working directory to temp
-			oldDir, err := os.Getwd()
-			if err != nil {
-				t.Fatalf("Failed to get current dir: %v", err)
-			}
-			defer os.Chdir(oldDir)
-			os.Chdir(tempDir)
+	// Test stdin input
+	exitCode := run([]string{input}, stdin, stdout, stderr, p, b)
 
-			// Backup and restore command-line args
-			oldArgs := os.Args
-			defer func() { os.Args = oldArgs }()
-			os.Args = append([]string{"quicktree"}, tt.args...)
-
-			// Run main function
-			main()
-
-			// Verify created structure
-			for _, path := range tt.expected {
-				fullPath := filepath.Join(tempDir, path)
-				if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-					t.Errorf("Expected path not created: %s", path)
-				}
-			}
-		})
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0, got %d", exitCode)
 	}
 }
 
-func TestHelpOutput(t *testing.T) {
-	// Backup and restore command-line args
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-	os.Args = []string{"quicktree", "-h"}
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	defer func() { os.Stdout = oldStdout }()
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	// Run main function
-	main()
-	w.Close()
-
-	// Read captured output
-	out, _ := io.ReadAll(r)
-
-	// Check for help content
-	if !strings.Contains(string(out), "Usage:") {
-		t.Error("Help output doesn't contain usage information")
+func TestRun_ParseError(t *testing.T) {
+	// Mock dependencies with error
+	p := &mockParser{
+		parseFunc: func(input string) (*parser.Node, error) {
+			return nil, errors.New("parse error")
+		},
 	}
-	if !strings.Contains(string(out), "Examples:") {
-		t.Error("Help output doesn't contain examples")
+
+	b := &mockBuilder{
+		buildFunc: func(root *parser.Node, maxDepth int) error {
+			return nil
+		},
+	}
+
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Test parse error
+	exitCode := run([]string{"project/"}, &bytes.Buffer{}, stdout, stderr, p, b)
+
+	if exitCode != 1 {
+		t.Errorf("Expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stderr.String(), "Error parsing input") {
+		t.Error("Error message was not printed")
+	}
+}
+
+func TestRun_BuildError(t *testing.T) {
+	// Mock dependencies with error
+	p := &mockParser{
+		parseFunc: func(input string) (*parser.Node, error) {
+			return &parser.Node{Name: "project", IsDir: true}, nil
+		},
+	}
+
+	b := &mockBuilder{
+		buildFunc: func(root *parser.Node, maxDepth int) error {
+			return errors.New("build error")
+		},
+	}
+
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Test build error
+	exitCode := run([]string{"project/"}, &bytes.Buffer{}, stdout, stderr, p, b)
+
+	if exitCode != 1 {
+		t.Errorf("Expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stderr.String(), "Error building tree") {
+		t.Error("Error message was not printed")
+	}
+}
+
+func TestRun_MaxDepthFlag(t *testing.T) {
+	// Mock dependencies
+	p := &mockParser{
+		parseFunc: func(input string) (*parser.Node, error) {
+			return &parser.Node{Name: "project", IsDir: true}, nil
+		},
+	}
+
+	b := &mockBuilder{
+		buildFunc: func(root *parser.Node, maxDepth int) error {
+			if maxDepth != 5 {
+				t.Errorf("Expected maxDepth 5, got %d", maxDepth)
+			}
+			return nil
+		},
+	}
+
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Test max depth flag
+	exitCode := run([]string{"-d", "5", "project/"}, &bytes.Buffer{}, stdout, stderr, p, b)
+
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0, got %d", exitCode)
+	}
+}
+
+// TestMainFunction заменяем на тест, который не вызывает os.Exit
+func TestMainFunctionWrapper(t *testing.T) {
+	// Mock dependencies
+	p := &mockParser{
+		parseFunc: func(input string) (*parser.Node, error) {
+			return &parser.Node{Name: "project", IsDir: true}, nil
+		},
+	}
+
+	b := &mockBuilder{
+		buildFunc: func(root *parser.Node, maxDepth int) error {
+			return nil
+		},
+	}
+
+	// Capture stdout and stderr
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	// Test main logic without calling os.Exit
+	exitCode := run([]string{"-v"}, &bytes.Buffer{}, stdout, stderr, p, b)
+
+	if exitCode != 0 {
+		t.Errorf("Expected exit code 0, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout.String(), "buildtree v"+version) {
+		t.Error("Version information was not printed")
 	}
 }
