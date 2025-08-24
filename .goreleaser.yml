@@ -19,12 +19,12 @@ builds:
     main: ./cmd/buildtree
 archives:
   - format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  name_template: "{{ .ProjectName }}_checksums.txt"
 snapshot:
   name_template: "{{ .ProjectName }}-SNAPSHOT-{{ .ShortCommit }}"
 changelog:
@@ -34,3 +34,7 @@ changelog:
       - "^docs:"
       - "^test:"
       - "^chore:"
+release:
+  github:
+    owner: neomen
+    name: buildtree
