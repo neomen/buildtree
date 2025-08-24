@@ -24,7 +24,7 @@ func ParseInput(input string) (*Node, error) {
 	input = normalizeTreeSymbols(input)
 	lines := strings.Split(input, "\n")
 
-	// Проверяем, что ввод не пустой после обработки
+	// Check that the input is not empty after processing
 	if strings.TrimSpace(input) == "" {
 		return nil, ErrEmptyInput
 	}
@@ -100,7 +100,7 @@ func ParseInput(input string) (*Node, error) {
 }
 
 func parseLine(line string) (level int, name string, isDir bool) {
-	// Удаляем комментарии в начале
+	// Deleting comments at the beginning
 	if idx := strings.Index(line, "#"); idx != -1 {
 		line = line[:idx]
 	}
@@ -124,14 +124,14 @@ func parseLine(line string) (level int, name string, isDir bool) {
 	realLevel := level / 4
 	name = extractName(remaining)
 
-	// Проверяем, является ли это директорией
+	// Checking if this is a directory
 	if strings.HasSuffix(name, "/") {
 		isDir = true
 		name = strings.TrimSuffix(name, "/")
 	} else {
-		// Проверяем, есть ли у имени расширение
-		// Если нет точки в имени, возможно, это директория без слеша
-		// Это эвристика, можно улучшить
+		// Checking if the name has an extension
+		// If there is no dot in the name, it is possible that it is a directory without a slash
+		// This is a heuristic, it can be improved
 		if !strings.Contains(name, ".") && !strings.Contains(name, string(os.PathSeparator)) {
 			isDir = true
 		}
@@ -143,14 +143,14 @@ func parseLine(line string) (level int, name string, isDir bool) {
 func extractName(line string) string {
 	name := strings.TrimSpace(line)
 
-	// Удаляем все возможные префиксы элементов дерева
+	// Removing all possible prefixes of tree elements
 	prefixes := []string{"── ", "-- ", "─ ", "- ", "└──", "├──", "│", "└─", "├─", "└", "├"}
 	for _, prefix := range prefixes {
 		name = strings.TrimPrefix(name, prefix)
 	}
 	name = strings.TrimSpace(name)
 
-	// Удаляем любые оставшиеся символы деревьев из начала имени
+	// Remove any remaining tree characters from the beginning of the name
 	for strings.HasPrefix(name, "├") || strings.HasPrefix(name, "└") ||
 		strings.HasPrefix(name, "│") || strings.HasPrefix(name, "─") ||
 		strings.HasPrefix(name, "|") || strings.HasPrefix(name, "-") {
@@ -163,7 +163,7 @@ func extractName(line string) string {
 		name = strings.TrimSpace(name)
 	}
 
-	// Удаляем комментарии в конце
+	// Deleting comments at the end
 	if idx := strings.Index(name, "#"); idx != -1 {
 		name = strings.TrimSpace(name[:idx])
 	}
@@ -171,6 +171,7 @@ func extractName(line string) string {
 	return name
 }
 
+// Bringing different types of tree to a uniform condition
 func normalizeTreeSymbols(input string) string {
 	input = strings.ReplaceAll(input, "|--", "├──")
 	input = strings.ReplaceAll(input, "'--", "└──")
