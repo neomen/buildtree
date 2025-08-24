@@ -2,7 +2,7 @@
 Write-Host "Installing buildtree..." -ForegroundColor Green
 
 # Determine architecture
-$Arch = if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") { "amd64" } else { "arm64" }
+$Arch = if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64" -or $env:PROCESSOR_ARCHITECTURE -eq "AMD64") { "amd64" } else { "arm64" }
 
 # Download URL
 $Url = "https://github.com/neomen/buildtree/releases/latest/download/buildtree_windows_${Arch}.tar.gz"
@@ -26,6 +26,7 @@ try {
 }
 catch {
     Write-Host "Error extracting archive: $_" -ForegroundColor Red
+    Write-Host "Make sure you have tar installed (Windows 10+ includes it)" -ForegroundColor Yellow
     exit 1
 }
 
@@ -33,19 +34,29 @@ catch {
 if (Test-Path "buildtree.exe") {
     Write-Host "Download successful!" -ForegroundColor Green
 
-    # Check if a bin directory exists in PATH
+    # Suggest adding to PATH
     $LocalBin = "$env:USERPROFILE\bin"
+    if (-not (Test-Path $LocalBin)) {
+        New-Item -ItemType Directory -Path $LocalBin -Force | Out-Null
+    }
+
+    # Check if the bin directory is in PATH
     $InPath = $env:PATH -split ";" | Where-Object { $_ -eq $LocalBin }
 
     if (-not $InPath) {
-        Write-Host "Consider adding a directory to your PATH for easier access." -ForegroundColor Yellow
-        Write-Host "You can create a bin directory and add it to your PATH:" -ForegroundColor Yellow
-        Write-Host "1. mkdir $LocalBin" -ForegroundColor Yellow
-        Write-Host "2. [Environment]::SetEnvironmentVariable('PATH', `"$LocalBin;`$env:PATH`", 'User')" -ForegroundColor Yellow
-        Write-Host "3. Move buildtree.exe to $LocalBin" -ForegroundColor Yellow
+        # Add to user PATH
+        $CurrentPath = [Environment]::GetEnvironmentVariable("PATH", "User")
+        $NewPath = "$LocalBin;$CurrentPath"
+        [Environment]::SetEnvironmentVariable("PATH", $NewPath, "User")
+        Write-Host "Added $LocalBin to your PATH" -ForegroundColor Green
     }
 
-    Write-Host "`nRun buildtree from current directory: .\buildtree.exe -h" -ForegroundColor Green
+    # Move binary to bin directory
+    Move-Item -Path "buildtree.exe" -Destination "$LocalBin\buildtree.exe" -Force
+    Write-Host "Installed to $LocalBin\buildtree.exe" -ForegroundColor Green
+
+    Write-Host "`nInstallation complete! You can now use 'buildtree' command." -ForegroundColor Green
+    Write-Host "You may need to restart your terminal for the PATH changes to take effect." -ForegroundColor Yellow
 }
 else {
     Write-Host "Error: buildtree.exe not found in downloaded archive" -ForegroundColor Red
