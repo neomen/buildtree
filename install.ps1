@@ -4,9 +4,13 @@ Write-Host "Installing buildtree..." -ForegroundColor Green
 # Determine architecture
 $Arch = if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64" -or $env:PROCESSOR_ARCHITECTURE -eq "AMD64") { "amd64" } else { "arm64" }
 
+# Create a temporary directory
+$TempDir = Join-Path $env:TEMP "buildtree-install"
+New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+
 # Download URL
 $Url = "https://github.com/neomen/buildtree/releases/latest/download/buildtree_windows_${Arch}.tar.gz"
-$OutputFile = "buildtree_windows_${Arch}.tar.gz"
+$OutputFile = Join-Path $TempDir "buildtree_windows_${Arch}.tar.gz"
 
 Write-Host "Downloading from $Url..."
 
@@ -21,7 +25,7 @@ catch {
 
 # Extract the archive
 try {
-    tar -xzf $OutputFile
+    tar -xzf $OutputFile -C $TempDir
     Remove-Item $OutputFile
 }
 catch {
@@ -31,10 +35,11 @@ catch {
 }
 
 # Check if buildtree.exe was extracted
-if (Test-Path "buildtree.exe") {
+$BinaryPath = Join-Path $TempDir "buildtree.exe"
+if (Test-Path $BinaryPath) {
     Write-Host "Download successful!" -ForegroundColor Green
 
-    # Suggest adding to PATH
+    # Create local bin directory if it doesn't exist
     $LocalBin = "$env:USERPROFILE\bin"
     if (-not (Test-Path $LocalBin)) {
         New-Item -ItemType Directory -Path $LocalBin -Force | Out-Null
@@ -52,7 +57,7 @@ if (Test-Path "buildtree.exe") {
     }
 
     # Move binary to bin directory
-    Move-Item -Path "buildtree.exe" -Destination "$LocalBin\buildtree.exe" -Force
+    Move-Item -Path $BinaryPath -Destination "$LocalBin\buildtree.exe" -Force
     Write-Host "Installed to $LocalBin\buildtree.exe" -ForegroundColor Green
 
     Write-Host "`nInstallation complete! You can now use 'buildtree' command." -ForegroundColor Green
@@ -62,3 +67,6 @@ else {
     Write-Host "Error: buildtree.exe not found in downloaded archive" -ForegroundColor Red
     exit 1
 }
+
+# Clean up
+Remove-Item $TempDir -Recurse -Force
