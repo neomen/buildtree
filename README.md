@@ -29,6 +29,27 @@ custom_login/
 go install github.com/neomen/buildtree/cmd/buildtree@latest
 ```
 
+### Quick install (Linux/macOS)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/neomen/buildtree/main/install.sh | sh
+```
+### Manual installation
+
+1. Download the latest release for your platform from the [releases page](https://github.com/neomen/buildtree/releases)
+2. Extract the archive:
+   ```bash
+   tar xzf buildtree_<os>_<arch>.tar.gz
+   ```
+3. Move the binary to your PATH:
+   ```bash
+   # Linux/macOS
+   sudo mv buildtree /usr/local/bin/
+
+   # Windows
+   # Move buildtree.exe to a directory in your PATH
+   ```
+
 ## Usage
 
 ### Basic Example
@@ -54,7 +75,7 @@ pbpaste | buildtree -
 
 ### From File
 ```bash
-buildtree -f structure.txt
+buildtree -i structure.txt
 ```
 
 ### Multi-level Project

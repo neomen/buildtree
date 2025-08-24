@@ -24,6 +24,13 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload install scripts
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-scripts
+          path: |
+            install.sh
+            install.ps1
 
   test:
     runs-on: ubuntu-latest
