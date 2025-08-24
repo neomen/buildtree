@@ -2,6 +2,7 @@ package builder
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/neomen/buildtree/internal/parser"
@@ -430,8 +431,35 @@ func TestBuildTree_WindowsReservedNames(t *testing.T) {
 	}
 
 	// Check that Windows reserved names were not created
-	assertNotExists(t, "project/CON")
-	assertNotExists(t, "project/LPT1")
+	// On Windows, we can't use standard methods to check for reserved names
+	// as they get redirected to devices. Instead, we check the directory contents.
+	entries, err := os.ReadDir("project")
+	if err != nil {
+		t.Fatalf("Error reading project directory: %v", err)
+	}
+
+	// Check that only normal names were created
+	foundNormalDir := false
+	foundNormalFile := false
+
+	for _, entry := range entries {
+		name := entry.Name()
+		switch name {
+		case "normal_dir":
+			foundNormalDir = true
+		case "normal_file.txt":
+			foundNormalFile = true
+		case "CON", "LPT1":
+			t.Errorf("Reserved name %s was created but should not be", name)
+		}
+	}
+
+	if !foundNormalDir {
+		t.Error("Normal directory was not created")
+	}
+	if !foundNormalFile {
+		t.Error("Normal file was not created")
+	}
 
 	// Check that normal names were created
 	assertDirExists(t, "project/normal_dir")
@@ -496,7 +524,20 @@ func assertNotExists(t *testing.T, path string) {
 		t.Errorf("Expected %s to not exist, but it does", path)
 		return
 	}
+
+	// On Windows, we ignore errors related to invalid file names
+	// as this is the expected behavior
 	if !os.IsNotExist(err) {
+		// Checking if the error is related to an invalid file name in Windows
+		if isWindowsInvalidNameError(err) {
+			// This is the expected behavior for Windows, so we don't consider it an error
+			return
+		}
 		t.Errorf("Unexpected error checking if %s exists: %v", path, err)
 	}
+}
+
+// isWindowsInvalidNameError checks if the error is related to an invalid file name in Windows
+func isWindowsInvalidNameError(err error) bool {
+	return strings.Contains(err.Error(), "The filename, directory name, or volume label syntax is incorrect")
 }
