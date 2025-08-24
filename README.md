@@ -32,8 +32,13 @@ go install github.com/neomen/buildtree/cmd/buildtree@latest
 ### Quick install (Linux/macOS)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/neomen/buildtree/main/install.sh | sh
+# Using curl
+curl -sSL https://github.com/neomen/buildtree/releases/latest/download/install.sh | sh
+
+# Or using wget
+wget -q -O - https://github.com/neomen/buildtree/releases/latest/download/install.sh | sh
 ```
+
 ### Manual installation
 
 1. Download the latest release for your platform from the [releases page](https://github.com/neomen/buildtree/releases)
