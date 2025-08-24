@@ -14,7 +14,8 @@ func TestBuildTree_SimpleStructure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(originalDir) // Восстанавливаем оригинальную директорию
+	// Restoring the original directory
+	defer os.Chdir(originalDir)
 
 	err = os.Chdir(tempDir)
 	if err != nil {
@@ -403,7 +404,8 @@ func TestBuildTree_WindowsReservedNames(t *testing.T) {
 		Level: 0,
 		Children: []*parser.Node{
 			{
-				Name:  "CON", // Windows reserved name
+				// Windows reserved name
+				Name:  "CON",
 				IsDir: true,
 				Level: 1,
 			},
@@ -413,7 +415,8 @@ func TestBuildTree_WindowsReservedNames(t *testing.T) {
 				Level: 1,
 			},
 			{
-				Name:  "LPT1", // Windows reserved name
+				// Windows reserved name
+				Name:  "LPT1",
 				IsDir: false,
 				Level: 1,
 			},
