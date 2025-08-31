@@ -122,6 +122,9 @@ func ExportStructure(outputFile, rootDir string, filters []string, ignoreDirs []
 				return fmt.Errorf("failed to get relative path for %s: %w", path, err)
 			}
 
+			// Replacing backslashes with straight ones
+			relPath = filepath.ToSlash(relPath)
+
 			// Read file content
 			content, err := os.ReadFile(path)
 			if err != nil {
