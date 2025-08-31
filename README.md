@@ -108,6 +108,29 @@ buildtree "docker-project/
     └── settings.yaml"
 ```
 
+## Exporting Project Structure for LLM Context
+
+Buildtree now includes a powerful feature that allows you to export your entire project structure with file contents to a single file, perfect for providing context to Large Language Models (LLMs).
+
+### Key Features
+
+- **Complete project context**: Export all files with their paths and contents in a structured format
+- **Smart filtering**: Include only relevant files by extension with `--filter`
+- **Size control**: Limit file size with `--max-size` (default: 100kb)
+- **Ignore patterns**: Skip directories like `.git` and `node_modules` by default
+- **Hidden files**: Control inclusion of hidden files with `--include-hidden`
+
+### Usage
+
+```bash
+buildtree -s OUTPUT_FILE [DIRECTORY] [OPTIONS]
+```
+
+This example will collect the contents of all files with the *.go, *.txt, *.md extension and combine them into a single file with relative paths.
+```bash
+buildtree -s export-structure.txt ./project-dir -f go,txt,md -I vendor
+```
+
 ## Use Cases
 - Quickly test LLM-generated file structures
 - Create educational examples for documentation
