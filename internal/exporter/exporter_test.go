@@ -18,7 +18,7 @@ func TestExportStructure_BasicExport(t *testing.T) {
 	// Creating the output file
 	outputFile := filepath.Join(tempDir, "export.txt")
 	// Exporting the structure
-	err := ExportStructure(outputFile, tempDir, nil, nil, 0, false)
+	err := ExportStructure(outputFile, tempDir, nil, nil, nil, 0, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestExportStructure_WithExtensionFilter(t *testing.T) {
 	// Creating the output file
 	outputFile := filepath.Join(tempDir, "export.txt")
 	// Exporting only .go files
-	err := ExportStructure(outputFile, tempDir, []string{"go"}, nil, 0, false)
+	err := ExportStructure(outputFile, tempDir, []string{"go"}, nil, nil, 0, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestExportStructure_WithIgnoreDirs(t *testing.T) {
 	// Creating the output file
 	outputFile := filepath.Join(tempDir, "export.txt")
 	// Exporting, ignoring dir2 and node_modules
-	err := ExportStructure(outputFile, tempDir, nil, []string{"dir2"}, 0, false)
+	err := ExportStructure(outputFile, tempDir, nil, []string{"dir2"}, nil, 0, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestExportStructure_WithMaxSize(t *testing.T) {
 	// Creating the output file
 	outputFile := filepath.Join(tempDir, "export.txt")
 	// Exporting with a limit of 100KB
-	err := ExportStructure(outputFile, tempDir, nil, nil, 100*1024, false)
+	err := ExportStructure(outputFile, tempDir, nil, nil, nil, 100*1024, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestExportStructure_WithHiddenFiles(t *testing.T) {
 	outputFile := filepath.Join(tempDir, "export.txt")
 
 	// First we check without including hidden files
-	err := ExportStructure(outputFile, tempDir, nil, nil, 0, false)
+	err := ExportStructure(outputFile, tempDir, nil, nil, nil, 0, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestExportStructure_WithHiddenFiles(t *testing.T) {
 	}
 
 	// Now we check with the inclusion of hidden files
-	err = ExportStructure(outputFile, tempDir, nil, nil, 0, true)
+	err = ExportStructure(outputFile, tempDir, nil, nil, nil, 0, true, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestExportStructure_SkipOutputFile(t *testing.T) {
 	// Creating the output file INSIDE the exported directory
 	outputFile := filepath.Join(tempDir, "export.txt")
 	// Exporting the structure
-	err := ExportStructure(outputFile, tempDir, nil, nil, 0, false)
+	err := ExportStructure(outputFile, tempDir, nil, nil, nil, 0, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestExportStructure_EmptyDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 	outputFile := filepath.Join(tempDir, "export.txt")
 	// Exporting the structure
-	err := ExportStructure(outputFile, tempDir, nil, nil, 0, false)
+	err := ExportStructure(outputFile, tempDir, nil, nil, nil, 0, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestExportStructure_InvalidRootDir(t *testing.T) {
 	// Using a non-existent directory
 	invalidDir := filepath.Join(tempDir, "nonexistent")
 	// Trying to export
-	err := ExportStructure(outputFile, invalidDir, nil, nil, 0, false)
+	err := ExportStructure(outputFile, invalidDir, nil, nil, nil, 0, false, false)
 	if err == nil {
 		t.Fatal("Expected error for invalid root directory, but got none")
 	}
@@ -298,7 +298,7 @@ func TestExportStructure_InvalidOutputFile(t *testing.T) {
 	// Trying to use an invalid path for the output file
 	invalidOutput := string([]rune{0}) // null character
 	// Trying to export
-	err := ExportStructure(invalidOutput, tempDir, nil, nil, 0, false)
+	err := ExportStructure(invalidOutput, tempDir, nil, nil, nil, 0, false, false)
 	if err == nil {
 		t.Fatal("Expected error for invalid output file path, but got none")
 	}
@@ -315,7 +315,7 @@ func TestExportStructure_PermissionError(t *testing.T) {
 	// Creating the output file
 	outputFile := filepath.Join(tempDir, "export.txt")
 	// Exporting the structure
-	err := ExportStructure(outputFile, tempDir, nil, nil, 0, false)
+	err := ExportStructure(outputFile, tempDir, nil, nil, nil, 0, false, false)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
