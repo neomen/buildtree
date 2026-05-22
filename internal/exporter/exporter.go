@@ -6,11 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
 )
 
 // ExportStructure saves the current directory structure with file contents to the specified file
 // with filtering options
-func ExportStructure(outputFile, rootDir string, filters []string, ignoreDirs []string, maxSize int64, includeHidden bool) error {
+// filters: list of file extensions or glob patterns (e.g., "go", "*.go", "*.md")
+// ignoreDirs: list of directory names to skip entirely
+// ignorePatterns: list of glob patterns for files to ignore (e.g., "*_test.go", "*.log")
+// minify: remove empty lines and strip whitespace from file contents
+func ExportStructure(outputFile, rootDir string, filters []string, ignoreDirs []string, ignorePatterns []string, maxSize int64, includeHidden bool, minify bool) error {
 	// Convert relative path to absolute
 	rootDirAbs, err := filepath.Abs(rootDir)
 	if err != nil {
@@ -101,14 +106,35 @@ func ExportStructure(outputFile, rootDir string, filters []string, ignoreDirs []
 				return nil
 			}
 
+			// Check ignore patterns (glob patterns for files to skip)
+			for _, pattern := range ignorePatterns {
+				if strings.TrimSpace(pattern) == "" {
+					continue
+				}
+				if match, _ := filepath.Match(pattern, fileName); match {
+					return nil
+				}
+			}
+
 			// Apply filters if specified
 			if len(filters) > 0 {
-				ext := strings.TrimPrefix(filepath.Ext(d.Name()), ".")
 				matched := false
+				ext := strings.TrimPrefix(filepath.Ext(fileName), ".")
 				for _, filter := range filters {
-					if strings.EqualFold(ext, filter) {
-						matched = true
-						break
+					// Check if filter contains glob pattern (*, ?, [])
+					if strings.ContainsAny(filter, "*?[]") {
+						// Use filepath.Match for glob patterns
+						match, err := filepath.Match(filter, fileName)
+						if err == nil && match {
+							matched = true
+							break
+						}
+					} else {
+						// Simple extension match
+						if strings.EqualFold(ext, filter) {
+							matched = true
+							break
+						}
 					}
 				}
 				if !matched {
@@ -131,11 +157,19 @@ func ExportStructure(outputFile, rootDir string, filters []string, ignoreDirs []
 				return fmt.Errorf("failed to read file %s: %w", path, err)
 			}
 
-			// Write header and content
+			// Write header
 			if _, err := fmt.Fprintf(f, "# %s\n", relPath); err != nil {
 				return err
 			}
-			if _, err := f.Write(content); err != nil {
+
+			// Write minified or original content
+			var contentToWrite string
+			if minify {
+				contentToWrite = minifyContent(string(content))
+			} else {
+				contentToWrite = string(content)
+			}
+			if _, err := f.WriteString(contentToWrite); err != nil {
 				return err
 			}
 			if _, err := f.WriteString("\n\n"); err != nil {
@@ -144,4 +178,31 @@ func ExportStructure(outputFile, rootDir string, filters []string, ignoreDirs []
 		}
 		return nil
 	})
+}
+
+// minifyContent removes empty lines and strips whitespace from content
+// to reduce token usage for LLM contexts
+func minifyContent(content string) string {
+	lines := strings.Split(content, "\n")
+	result := make([]string, 0, len(lines))
+	emptyLines := 0
+
+	for _, line := range lines {
+		stripped := strings.TrimSpace(line)
+
+		if stripped == "" {
+			emptyLines++
+			continue
+		}
+
+		// Allow at most 1 empty line between content
+		if emptyLines > 0 {
+			result = append(result, "")
+			emptyLines = 0
+		}
+
+		result = append(result, stripped)
+	}
+
+	return strings.Join(result, "\n")
 }

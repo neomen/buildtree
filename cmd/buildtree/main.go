@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -42,129 +41,200 @@ func (r *realBuilder) BuildTree(root *parser.Node, maxDepth int) error {
 
 // Let's put the main logic in a separate function for testing
 func run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, p parserInterface, b builderInterface) int {
-	// First, we look for the -s or --structure flag in the arguments
+	// Parse flags manually from args (before -s handling) to handle flags that come after arguments
 	var saveStructureValue string
-	var newArgs []string
-	skipNext := false
+	var filterValue string
+	var ignoreDirsValue string
+	var ignorePatternsValue string
+	var maxSizeValue string
+	var inputFilePath string
+	var maxDepthValue string
+	var includeHiddenValue string
+	var minifyValue bool
+	var helpFlagValue bool
+	var versionFlagValue bool
 
-	// We go through all the arguments to find the -s flag
+	skipNext := false
 	for i, arg := range args {
 		if skipNext {
 			skipNext = false
 			continue
 		}
 
-		// Checking the long shape of the flag
+		// Handle -s flag
 		if arg == "-s" || arg == "--structure" {
 			if i+1 < len(args) {
 				saveStructureValue = args[i+1]
 				skipNext = true
-				continue
 			}
-			// Checking the form with equality
 		} else if strings.HasPrefix(arg, "-s=") || strings.HasPrefix(arg, "--structure=") {
 			parts := strings.SplitN(arg, "=", 2)
 			if len(parts) == 2 {
 				saveStructureValue = parts[1]
-				continue
 			}
+		} else if arg == "-f" || arg == "--filter" {
+			if i+1 < len(args) {
+				filterValue = args[i+1]
+				skipNext = true
+			}
+		} else if strings.HasPrefix(arg, "-f=") || strings.HasPrefix(arg, "--filter=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 {
+				filterValue = parts[1]
+			}
+		} else if arg == "-I" || arg == "--ignore-dir" {
+			if i+1 < len(args) {
+				ignoreDirsValue = args[i+1]
+				skipNext = true
+			}
+		} else if strings.HasPrefix(arg, "-I=") || strings.HasPrefix(arg, "--ignore-dir=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 {
+				ignoreDirsValue = parts[1]
+			}
+		} else if arg == "--ignore-pattern" || arg == "--ignore" {
+			if i+1 < len(args) {
+				ignorePatternsValue = args[i+1]
+				skipNext = true
+			}
+		} else if strings.HasPrefix(arg, "--ignore-pattern=") || strings.HasPrefix(arg, "--ignore=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 {
+				ignorePatternsValue = parts[1]
+			}
+		} else if arg == "--max-size" {
+			if i+1 < len(args) {
+				maxSizeValue = args[i+1]
+				skipNext = true
+			}
+		} else if strings.HasPrefix(arg, "--max-size=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 {
+				maxSizeValue = parts[1]
+			}
+		} else if arg == "--input-file" || arg == "-i" {
+			if i+1 < len(args) {
+				inputFilePath = args[i+1]
+				skipNext = true
+			}
+		} else if strings.HasPrefix(arg, "--input-file=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 {
+				inputFilePath = parts[1]
+			}
+		} else if arg == "--max-depth" || arg == "-d" {
+			if i+1 < len(args) {
+				maxDepthValue = args[i+1]
+				skipNext = true
+			}
+		} else if strings.HasPrefix(arg, "--max-depth=") || strings.HasPrefix(arg, "-d=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 {
+				maxDepthValue = parts[1]
+			}
+		} else if arg == "--include-hidden" || arg == "-H" {
+			includeHiddenValue = "true"
+		} else if strings.HasPrefix(arg, "--include-hidden=") || strings.HasPrefix(arg, "-H=") {
+			parts := strings.SplitN(arg, "=", 2)
+			if len(parts) == 2 {
+				includeHiddenValue = parts[1]
+			}
+		} else if arg == "--minify" {
+			minifyValue = true
+		} else if arg == "--help" || arg == "-h" {
+			helpFlagValue = true
+		} else if arg == "--version" || arg == "-v" {
+			versionFlagValue = true
 		}
-
-		// Saving arguments, except for the found flag
-		newArgs = append(newArgs, arg)
-	}
-
-	// Creating a new set of flags
-	flags := flag.NewFlagSet("buildtree", flag.ContinueOnError)
-	flags.SetOutput(stderr)
-
-	// Defining all flags
-	filePath := flags.String("input-file", "", "Path to file containing directory structure")
-	helpFlag := flags.Bool("help", false, "Show help")
-	maxDepth := flags.Int("max-depth", 20, "Maximum nesting depth allowed (0 = no limit)")
-	versionFlag := flags.Bool("version", false, "Show version information")
-
-	// A flag for exporting the structure (needed for parsing other flags)
-	saveStructure := flags.String("s", "", "Save current directory structure with file contents to specified file")
-
-	// Additional flags for export
-	structureFilter := flags.String("filter", "", "Comma-separated list of file extensions to include (e.g., go,js,txt)")
-	ignoreDirs := flags.String("ignore-dir", "", "Comma-separated list of directories to ignore (in addition to .git and node_modules)")
-	maxSize := flags.String("max-size", "100kb", "Maximum file size to include (e.g., 100kb, 1mb)")
-	includeHidden := flags.Bool("include-hidden", false, "Include hidden files and directories (starting with .)")
-
-	// Adding Aliases
-	flags.StringVar(filePath, "i", "", "Alias for --input-file")
-	flags.IntVar(maxDepth, "d", 20, "Alias for --max-depth")
-	flags.BoolVar(versionFlag, "v", false, "Alias for --version")
-	flags.BoolVar(helpFlag, "h", false, "Alias for --help")
-	flags.StringVar(saveStructure, "structure", "", "Alias for --save-structure")
-	flags.StringVar(structureFilter, "f", "", "Alias for --filter")
-	flags.StringVar(ignoreDirs, "I", "", "Alias for --ignore-dir (uppercase i)")
-
-	// Parse the remaining arguments
-	if err := flags.Parse(newArgs); err != nil {
-		return 1
-	}
-
-	// If we found the -s flag manually, we use its value
-	if saveStructureValue != "" {
-		*saveStructure = saveStructureValue
 	}
 
 	// Processing of standard flags
-	if *helpFlag {
+	if helpFlagValue {
 		printHelp(stdout)
 		return 0
 	}
 
-	if *versionFlag {
+	if versionFlagValue {
 		fmt.Fprintf(stdout, "buildtree v%s\nCommit: %s\nBuilt: %s\n", version, commit, date)
 		return 0
 	}
 
 	// FLAG HANDLING -s
-	if *saveStructure != "" {
+	if saveStructureValue != "" {
 		// Checking for conflicts
-		if *filePath != "" {
+		if inputFilePath != "" {
 			fmt.Fprintln(stderr, "Error: -s/--structure cannot be used with --input-file")
 			return 1
 		}
 
 		// Defining the root directory
 		rootDir := "."
-		args := flags.Args()
-		if len(args) > 0 {
-			rootDir = args[0]
+		// Find the first non-flag argument after -s value
+		skipNext := false
+		for _, arg := range args {
+			if skipNext {
+				skipNext = false
+				continue
+			}
+			if strings.HasPrefix(arg, "-") {
+				// Skip the value if this is -s/--structure
+				if arg == "-s" || arg == "--structure" || strings.HasPrefix(arg, "-s=") || strings.HasPrefix(arg, "--structure=") {
+					skipNext = true
+				}
+				continue
+			}
+			rootDir = arg
+			break
 		}
 
-		// Processing filters
+		// Processing filters - default to text file extensions if not specified
 		var filters []string
-		if *structureFilter != "" {
-			filters = strings.Split(*structureFilter, ",")
+		if filterValue != "" {
+			filters = strings.Split(filterValue, ",")
 			for i := range filters {
 				filters[i] = strings.TrimSpace(filters[i])
 			}
+		} else {
+			// Default text file extensions for export
+			filters = []string{"go", "js", "ts", "jsx", "tsx", "py", "rb", "php", "java", "c", "cpp", "h", "hpp", "cs", "rs", "swift", "kt", "scala", "html", "css", "scss", "sass", "json", "yaml", "yml", "xml", "md", "txt", "csv", "toml", "ini", "cfg", "conf"}
 		}
 
 		// Processing ignored directories
 		var ignoreList []string
-		if *ignoreDirs != "" {
-			ignoreList = strings.Split(*ignoreDirs, ",")
+		if ignoreDirsValue != "" {
+			ignoreList = strings.Split(ignoreDirsValue, ",")
 			for i := range ignoreList {
 				ignoreList[i] = strings.TrimSpace(ignoreList[i])
 			}
 		}
 
-		// Parse the maximum size
-		maxSizeBytes, err := utils.ParseSize(*maxSize)
-		if err != nil {
-			fmt.Fprintf(stderr, "Error parsing max-size: %v\n", err)
-			return 1
+		// Processing ignore patterns
+		var ignorePatternsList []string
+		if ignorePatternsValue != "" {
+			ignorePatternsList = strings.Split(ignorePatternsValue, ",")
+			for i := range ignorePatternsList {
+				ignorePatternsList[i] = strings.TrimSpace(ignorePatternsList[i])
+			}
 		}
 
+		// Default max size if empty (use 100kb as default)
+		maxSizeBytes, err := utils.ParseSize("100kb")
+		if maxSizeValue != "" {
+			maxSizeBytes, err = utils.ParseSize(maxSizeValue)
+			if err != nil {
+				fmt.Fprintf(stderr, "Error parsing max-size: %v\n", err)
+				return 1
+			}
+		}
+
+		// Check include hidden
+		includeHidden := includeHiddenValue != "" && includeHiddenValue != "false"
+
+		// Check minify
+		minify := minifyValue
+
 		// Export the structure
-		if err := exporter.ExportStructure(*saveStructure, rootDir, filters, ignoreList, maxSizeBytes, *includeHidden); err != nil {
+		if err := exporter.ExportStructure(saveStructureValue, rootDir, filters, ignoreList, ignorePatternsList, maxSizeBytes, includeHidden, minify); err != nil {
 			fmt.Fprintf(stderr, "Error exporting structure: %v\n", err)
 			return 1
 		}
@@ -172,9 +242,15 @@ func run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, p p
 	}
 
 	// Normal processing (creating a structure)
-	input := getInput(*filePath, stdin, flags, stderr)
+	input := getInput(inputFilePath, stdin, args, stderr)
 	if input == "" {
 		return 1
+	}
+
+	// Parse max depth
+	maxDepth := 20
+	if maxDepthValue != "" {
+		fmt.Sscanf(maxDepthValue, "%d", &maxDepth)
 	}
 
 	// Parsing the structure
@@ -185,7 +261,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, p p
 	}
 
 	// Building a tree
-	if err := b.BuildTree(root, *maxDepth); err != nil {
+	if err := b.BuildTree(root, maxDepth); err != nil {
 		fmt.Fprintf(stderr, "Error building tree: %v\n", err)
 		return 1
 	}
@@ -193,7 +269,7 @@ func run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer, p p
 	return 0
 }
 
-func getInput(filePath string, stdin io.Reader, flags *flag.FlagSet, stderr io.Writer) string {
+func getInput(filePath string, stdin io.Reader, args []string, stderr io.Writer) string {
 	if filePath != "" {
 		content, err := os.ReadFile(filePath)
 		if err != nil {
@@ -203,13 +279,17 @@ func getInput(filePath string, stdin io.Reader, flags *flag.FlagSet, stderr io.W
 		return string(content)
 	}
 
-	args := flags.Args()
-	if len(args) < 1 {
-		printHelp(stderr)
-		fmt.Fprintln(stderr, "Error: No input structure provided")
-		return ""
+	// Find the first non-flag argument
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+		return arg
 	}
-	return args[0]
+
+	printHelp(stderr)
+	fmt.Fprintln(stderr, "Error: No input structure provided")
+	return ""
 }
 
 func printHelp(w io.Writer) {
@@ -221,10 +301,12 @@ func printHelp(w io.Writer) {
 	fmt.Fprintln(w, "  -h, --help		Show this help message")
 	fmt.Fprintln(w, "  -v, --version		Show version information")
 	fmt.Fprintln(w, "  -s, --structure FILE	Save current directory structure with file contents to FILE")
-	fmt.Fprintln(w, "  -f, --filter EXTS	Comma-separated list of file extensions to include (e.g., go,js,txt)")
+	fmt.Fprintln(w, "  -f, --filter EXTS	Comma-separated list of file extensions or glob patterns (default: common text formats)")
 	fmt.Fprintln(w, "  -I, --ignore-dir DIRS	Comma-separated list of directories to ignore (in addition to .git and node_modules)")
+	fmt.Fprintln(w, "  --ignore PATTERNS	Comma-separated glob patterns for files to ignore (e.g., *_test.go,*.log)")
 	fmt.Fprintln(w, "  --max-size SIZE	Maximum file size to include (default: 100kb, e.g., 100kb, 1mb)")
 	fmt.Fprintln(w, "  -H, --include-hidden	Include hidden files and directories (starting with .)")
+	fmt.Fprintln(w, "  --minify		Strip whitespace and empty lines to reduce token usage for LLM")
 	fmt.Fprintln(w, "\nExamples:")
 	fmt.Fprintln(w, "  buildtree \"project/\n├── src/\n│   └── main.go\"")
 	fmt.Fprintln(w, "  buildtree --input-file structure.txt")

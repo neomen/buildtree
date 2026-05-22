@@ -115,10 +115,12 @@ Buildtree now includes a powerful feature that allows you to export your entire 
 ### Key Features
 
 - **Complete project context**: Export all files with their paths and contents in a structured format
-- **Smart filtering**: Include only relevant files by extension with `--filter`
+- **Smart filtering**: Include only text files by default (go, js, py, md, json, yaml, xml, txt, etc.)
 - **Size control**: Limit file size with `--max-size` (default: 100kb)
 - **Ignore patterns**: Skip directories like `.git` and `node_modules` by default
 - **Hidden files**: Control inclusion of hidden files with `--include-hidden`
+- **File ignore patterns**: Ignore specific files using glob patterns with `--ignore`
+- **Minification**: Reduce token usage with `--minify` (strips whitespace and empty lines)
 
 ### Usage
 
@@ -126,9 +128,65 @@ Buildtree now includes a powerful feature that allows you to export your entire 
 buildtree -s OUTPUT_FILE [DIRECTORY] [OPTIONS]
 ```
 
-This example will collect the contents of all files with the *.go, *.txt, *.md extension and combine them into a single file with relative paths.
+Options:
+- `-f, --filter EXTS` - Comma-separated list of file extensions or glob patterns (default: common text formats like .go, .js, .txt, .md, .json, etc.)
+- `-I, --ignore-dir DIRS` - Comma-separated list of directories to ignore (in addition to `.git` and `node_modules`)
+- `--ignore PATTERNS` - Comma-separated glob patterns for files to ignore (e.g., `*_test.go,*.log`)
+- `--max-size SIZE` - Maximum file size to include (default: 100kb, e.g., 100kb, 1mb)
+- `-H, --include-hidden` - Include hidden files and directories (starting with `.`)
+- `--minify` - Strip whitespace and empty lines to reduce token usage for LLM
+
+Flags can be placed before or after the directory argument:
 ```bash
-buildtree -s export-structure.txt ./project-dir -f go,txt,md -I vendor
+# Flag after directory
+buildtree -s export.txt ./project-dir -f "go,md"
+
+# Flag before directory
+buildtree -s export.txt -f "go,md" ./project-dir
+```
+
+Examples:
+```bash
+# Export project structure (exports text files by default)
+buildtree -s export-structure.txt ./project-dir -I vendor
+
+# Export with glob patterns
+buildtree -s all.txt . -f "*.go,*.md" --ignore="*_test.go,*.log"
+
+# Export all files (don't filter by extension)
+buildtree -s all.txt . -f "*"
+
+# Export with multiple filters and ignore patterns
+buildtree -s context.txt ./myapp -f "go,js,ts,md,json" --ignore="*_test.go,*.log,*.tmp" -I dist
+```
+
+### Advanced Filtering and Ignoring
+
+**Glob pattern support**: Both `--filter` and `--ignore` support glob patterns like `*`, `?`, and `[...]`.
+
+By default, only text file extensions are included: go, js, ts, py, rb, php, java, c, cpp, h, cs, rs, html, css, json, yaml, yml, xml, md, txt, csv, toml, ini, cfg, and more.
+
+```bash
+# Include only Go files and files starting with config
+buildtree -s export.txt . -f "go,config.*"
+
+# Ignore test files and log files
+buildtree -s export.txt . --ignore="*_test.go,*.log"
+
+# Multiple ignore patterns
+buildtree -s export.txt . --ignore="*_test.go,*.log,*.tmp"
+
+# Export all files without filtering by extension
+buildtree -s all.txt . -f "*"
+
+# Export with maximum file size limit
+buildtree -s context.txt . --max-size 50kb
+
+# Export including hidden files
+buildtree -s all.txt . -f "*" -H
+
+# Minify output to reduce token usage
+buildtree -s context.txt . --minify
 ```
 
 ## Use Cases
